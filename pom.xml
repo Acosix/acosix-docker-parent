@@ -3,7 +3,7 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.acosix.docker</groupId>
-    <artifactId>parent</artifactId>
+    <artifactId>acosix-docker-parent</artifactId>
     <packaging>pom</packaging>
     <version>1.0.0-SNAPSHOT</version>
 
@@ -42,13 +42,15 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <maven.dependency.version>3.1.1</maven.dependency.version>
+        <maven.enforcer.version>1.4.1</maven.enforcer.version>
+        <maven.clean.version>3.1.0</maven.clean.version>
         <maven.resources.version>3.1.0</maven.resources.version>
-        <maven.war.version>3.2.2</maven.war.version>
+        <maven.dependency.version>3.1.1</maven.dependency.version>
+        <maven.war.version>3.2.3</maven.war.version>
         <maven.antrun.version>1.8</maven.antrun.version>
         <maven.build-helper.version>3.0.0</maven.build-helper.version>
-        <spotify.dockerfile.version>1.4.4</spotify.dockerfile.version>
-        <fabric8io.docker.version>0.26.1</fabric8io.docker.version>
+        <maven.install.version>2.5.2</maven.install.version>
+        <fabric8io.docker.version>0.30.0</fabric8io.docker.version>
 
         <docker.registry.id></docker.registry.id>
         <docker.registry.push.id>${docker.registry.id}</docker.registry.push.id>
@@ -75,18 +77,6 @@
         <!-- no push without tag -->
         <docker.skip.push>${docker.skip.tag}</docker.skip.push>
 
-        <!-- only used by Spotify plugin for Docker -->
-        <docker.registry.host>index.docker.io</docker.registry.host>
-        <docker.retry.count>0</docker.retry.count>
-        <docker.google.enabled>false</docker.google.enabled>
-        <docker.configFile></docker.configFile>
-        <docker.skip.build.latest>${docker.skip.build}</docker.skip.build.latest>
-        <docker.skip.build.version>${docker.skip.build}</docker.skip.build.version>
-        <docker.skip.tag.version>${docker.skip.tag}</docker.skip.tag.version>
-        <docker.skip.tag.latest>${docker.skip.tag}</docker.skip.tag.latest>
-        <docker.skip.push.version>${docker.skip.push}</docker.skip.push.version>
-        <docker.skip.push.latest>${docker.skip.push}</docker.skip.push.latest>
-
         <sonatypeOssDistMgmtSnapshotsUrl>https://oss.sonatype.org/content/repositories/snapshots/</sonatypeOssDistMgmtSnapshotsUrl>
     </properties>
 
@@ -98,10 +88,10 @@
                 <enabled>true</enabled>
             </snapshots>
         </repository>
-        <repository>     
-            <id>alfresco-public</id>      
-            <url>https://artifacts.alfresco.com/nexus/content/groups/public</url>   
-        </repository>  
+        <repository>
+            <id>alfresco-public</id>
+            <url>https://artifacts.alfresco.com/nexus/content/groups/public</url>
+        </repository>
     </repositories>
 
     <pluginRepositories>
@@ -128,14 +118,51 @@
     <build>
         <pluginManagement>
             <plugins>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${maven.enforcer.version}</version>
+                    <executions>
+                        <execution>
+                            <id>enforce-maven</id>
+                            <goals>
+                                <goal>enforce</goal>
+                            </goals>
+                            <configuration>
+                                <rules>
+                                    <requireMavenVersion>
+                                        <version>[3.5,)</version>
+                                    </requireMavenVersion>
+                                </rules>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>${maven.clean.version}</version>
+                </plugin>
+
+                <plugin>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>${maven.resources.version}</version>
+                    <configuration>
+                        <escapeString>\</escapeString>
+                    </configuration>
+                </plugin>
+
                 <plugin>
                     <artifactId>maven-dependency-plugin</artifactId>
                     <version>${maven.dependency.version}</version>
                 </plugin>
+
                 <plugin>
                     <artifactId>maven-war-plugin</artifactId>
                     <version>${maven.war.version}</version>
                 </plugin>
+
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
@@ -176,13 +203,7 @@
                         </execution>
                     </executions>
                 </plugin>
-                <plugin>
-                    <artifactId>maven-resources-plugin</artifactId>
-                    <version>${maven.resources.version}</version>
-                    <configuration>
-                        <escapeString>\</escapeString>
-                    </configuration>
-                </plugin>
+
                 <plugin>
                     <artifactId>maven-antrun-plugin</artifactId>
                     <version>${maven.antrun.version}</version>
@@ -203,58 +224,6 @@
                     </executions>
                 </plugin>
 
-                <!-- Option 1: Use Spotify plugin -->
-                <plugin>
-                    <groupId>com.spotify</groupId>
-                    <artifactId>dockerfile-maven-plugin</artifactId>
-                    <version>${spotify.dockerfile.version}</version>
-                    <executions>
-                        <execution>
-                            <id>build-image</id>
-                            <phase>package</phase>
-                            <goals>
-                                <goal>build</goal>
-                            </goals>
-                            <configuration>
-                                <contextDirectory>${project.build.directory}/ImageBuild</contextDirectory>
-                                <tag>${project.version}</tag>
-                            </configuration>
-                        </execution>
-                        <execution>
-                            <id>tag-image-latest</id>
-                            <phase>package</phase>
-                            <goals>
-                                <goal>tag</goal>
-                            </goals>
-                            <configuration>
-                                <skipDocker>${docker.skip.tag.latest}</skipDocker>
-                                <tag>latest</tag>
-                            </configuration>
-                        </execution>
-                        <execution>
-                            <id>push-latest-image</id>
-                            <phase>deploy</phase>
-                            <goals>
-                                <goal>push</goal>
-                            </goals>
-                            <configuration>
-                                <skipDocker>${docker.skip.push.latest}</skipDocker>
-                                <tag>latest</tag>
-                            </configuration>
-                        </execution>
-                    </executions>
-                    <configuration>
-                        <serverId>${docker.registry.id}</serverId>
-                        <registryUrl>https://${docker.registry.host}/v1/</registryUrl>
-                        <repository>${docker.image.id}</repository>
-                        <useMavenSettingsForAuth>true</useMavenSettingsForAuth>
-                        <retryCount>${docker.retry.count}</retryCount>
-                        <googleContainerRegistryEnabled>${docker.google.enabled}</googleContainerRegistryEnabled>
-                        <skip>${docker.skip}</skip>
-                    </configuration>
-                </plugin>
-
-                <!-- Option 2: Use fabric8io plugin -->
                 <plugin>
                     <groupId>io.fabric8</groupId>
                     <artifactId>docker-maven-plugin</artifactId>
@@ -280,7 +249,7 @@
                             <image>
                                 <name>${docker.image.id}</name>
                                 <build>
-                                    <dockerFileDir>${project.build.directory}/ImageBuild</dockerFileDir>
+                                    <contextDir>${project.build.directory}/ImageBuild</contextDir>
                                     <tags>
                                         <tag>latest</tag>
                                         <tag>${project.version}</tag>
