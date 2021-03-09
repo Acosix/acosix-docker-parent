@@ -5,7 +5,7 @@
     <groupId>de.acosix.docker</groupId>
     <artifactId>acosix-docker-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 
     <url>https://github.com/Acosix/docker-parent</url>
 
