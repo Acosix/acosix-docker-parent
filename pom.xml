@@ -22,6 +22,8 @@
     <packaging>pom</packaging>
     <version>1.0.0</version>
 
+    <name>Acosix Docker Parent</name>
+    <description>Parent POM for Acosix Maven-based Docker Builds</description>
     <url>https://github.com/Acosix/docker-parent</url>
 
     <licenses>
