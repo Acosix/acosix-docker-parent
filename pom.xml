@@ -20,7 +20,7 @@
     <groupId>de.acosix.docker</groupId>
     <artifactId>acosix-docker-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 
     <name>Acosix Docker Parent</name>
     <description>Parent POM for Acosix Maven-based Docker Builds</description>
@@ -59,19 +59,23 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <maven.enforcer.version>1.4.1</maven.enforcer.version>
-        <maven.clean.version>3.1.0</maven.clean.version>
-        <maven.resources.version>3.1.0</maven.resources.version>
-        <maven.dependency.version>3.1.1</maven.dependency.version>
-        <maven.war.version>3.2.3</maven.war.version>
-        <maven.antrun.version>1.8</maven.antrun.version>
-        <maven.build-helper.version>3.0.0</maven.build-helper.version>
-        <maven.install.version>2.5.2</maven.install.version>
-        <fabric8io.docker.version>0.30.0</fabric8io.docker.version>
+        <maven.enforcer.version>3.6.1</maven.enforcer.version>
+        <maven.clean.version>3.5.0</maven.clean.version>
+        <maven.resources.version>3.3.1</maven.resources.version>
+        <maven.dependency.version>3.8.1</maven.dependency.version>
+        <maven.toolchain.version>3.2.0</maven.toolchain.version>
+        <maven.war.version>3.5.1</maven.war.version>
+        <maven.antrun.version>3.2.0</maven.antrun.version>
+        <maven.install.version>3.1.4</maven.install.version>
+        <maven.gpg.version>3.2.8</maven.gpg.version>
+        <maven.deploy.version>3.1.4</maven.deploy.version>
+        <maven.helper.version>3.6.1</maven.helper.version>
+        <maven.exec.version>3.5.1</maven.exec.version>
 
-        <docker.registry.id></docker.registry.id>
-        <docker.registry.push.id>${docker.registry.id}</docker.registry.push.id>
-        <docker.registry.pull.id>${docker.registry.id}</docker.registry.pull.id>
+        <maven.sonatype.central.version>0.9.0</maven.sonatype.central.version>
+
+        <docker.registry.push.prefix></docker.registry.push.prefix>
+        <docker.registry.pull.prefix></docker.registry.pull.prefix>
 
         <docker.image.organisation>acosix</docker.image.organisation>
         <docker.image.name>${project.artifactId}</docker.image.name>
@@ -85,22 +89,12 @@
         <docker.labels.vendor>Acosix GmbH</docker.labels.vendor>
         <docker.labels.maintainer>info@acosix.org</docker.labels.maintainer>
         <docker.labels.namespace>de.acosix.docker</docker.labels.namespace>
-
-        <docker.skip>false</docker.skip>
-
-        <docker.skip.build>false</docker.skip.build>
-        <!-- no tag without build -->
-        <docker.skip.tag>${docker.skip.build}</docker.skip.tag>
-        <!-- no push without tag -->
-        <docker.skip.push>${docker.skip.tag}</docker.skip.push>
-
-        <sonatypeOssDistMgmtSnapshotsUrl>https://oss.sonatype.org/content/repositories/snapshots/</sonatypeOssDistMgmtSnapshotsUrl>
     </properties>
 
     <repositories>
         <repository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <id>central-snapshots</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>
@@ -113,8 +107,8 @@
 
     <pluginRepositories>
         <pluginRepository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <id>central-snapshots</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>
@@ -123,12 +117,12 @@
 
     <distributionManagement>
         <repository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+            <id>central</id>
+            <url>https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/</url>
         </repository>
         <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <id>central</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
         </snapshotRepository>
     </distributionManagement>
 
@@ -149,12 +143,18 @@
                             <configuration>
                                 <rules>
                                     <requireMavenVersion>
-                                        <version>[3.5,)</version>
+                                        <version>[3.9,)</version>
                                     </requireMavenVersion>
                                 </rules>
                             </configuration>
                         </execution>
                     </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-toolchains-plugin</artifactId>
+                    <version>${maven.toolchain.version}</version>
                 </plugin>
 
                 <plugin>
@@ -183,7 +183,7 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
-                    <version>${maven.build-helper.version}</version>
+                    <version>${maven.helper.version}</version>
                     <executions>
                         <execution>
                             <id>parse-project-version</id>
@@ -232,71 +232,84 @@
                                 <goal>run</goal>
                             </goals>
                             <configuration>
-                                <tasks>
+                                <target>
                                     <fixcrlf srcDir="${project.build.directory}/ImageBuild" eol="unix"
                                         encoding="${project.build.sourceEncoding}" />
-                                </tasks>
+                                </target>
                             </configuration>
                         </execution>
                     </executions>
                 </plugin>
 
                 <plugin>
-                    <groupId>io.fabric8</groupId>
-                    <artifactId>docker-maven-plugin</artifactId>
-                    <version>${fabric8io.docker.version}</version>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>${maven.exec.version}</version>
+                    <extensions>true</extensions>
                     <executions>
                         <execution>
                             <id>build-image</id>
                             <phase>package</phase>
                             <goals>
-                                <goal>build</goal>
+                                <goal>exec</goal>
                             </goals>
-                        </execution>
-                        <execution>
-                            <id>push-image</id>
-                            <phase>deploy</phase>
-                            <goals>
-                                <goal>push</goal>
-                            </goals>
+                            <configuration>
+                                <executable>docker</executable>
+                                <arguments>
+                                    <argument>compose</argument>
+                                    <argument>-f</argument>
+                                    <argument>${project.build.directory}/ImageBuild/docker-compose.yaml</argument>
+                                    <argument>build</argument>
+                                </arguments>
+                            </configuration>
                         </execution>
                     </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>${maven.sonatype.central.version}</version>
+                    <extensions>true</extensions>
                     <configuration>
-                        <images>
-                            <image>
-                                <name>${docker.image.id}</name>
-                                <build>
-                                    <contextDir>${project.build.directory}/ImageBuild</contextDir>
-                                    <tags>
-                                        <tag>latest</tag>
-                                        <tag>${project.version}</tag>
-                                    </tags>
-                                </build>
-                            </image>
-                        </images>
-                        <skip>${docker.skip}</skip>
-                        <skipBuild>${docker.skip.build}</skipBuild>
-                        <skipTag>${docker.skip.tag}</skipTag>
-                        <skipPush>${docker.skip.push}</skipPush>
-                        <pullRegistry>${docker.registry.pull.id}</pullRegistry>
-                        <pushRegistry>${docker.registry.push.id}</pushRegistry>
-                        <imagePullPolicy>IfNotPresent</imagePullPolicy>
+                        <deploymentName>central.sonatype.com</deploymentName>
+                        <autoPublish>true</autoPublish>
+                        <waitUntil>published</waitUntil>
                     </configuration>
                 </plugin>
 
                 <plugin>
-                    <groupId>org.sonatype.plugins</groupId>
-                    <artifactId>nexus-staging-maven-plugin</artifactId>
-                    <version>1.6.7</version>
-                    <extensions>true</extensions>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>${maven.gpg.version}</version>
                     <configuration>
-                        <serverId>ossrh</serverId>
-                        <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                        <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                        <useAgent>false</useAgent>
+                        <keyname>${gpg.keyname}</keyname>
+                        <passphraseServerId>${gpg.keyname}</passphraseServerId>
                     </configuration>
+                    <executions>
+                        <execution>
+                            <id>sign-artifacts</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>sign</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
 
     <profiles>
@@ -306,22 +319,194 @@
                 <plugins>
                     <plugin>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.6</version>
-                        <configuration>
-                            <useAgent>false</useAgent>
-                            <keyname>${gpg.keyname}</keyname>
-                            <passphraseServerId>${gpg.keyname}</passphraseServerId>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
                     </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>docker-build</id>
+            <activation>
+                <property>
+                    <name>docker.skip</name>
+                    <value>!true</value>
+                </property>
+                <file>
+                    <exists>src/main/resources/docker-compose.yaml</exists>
+                </file>
+            </activation>
+
+            <properties>
+                <docker.latest.build.skip>false</docker.latest.build.skip>
+                <docker.latest.push.skip>false</docker.latest.push.skip>
+            </properties>
+
+            <build>
+                <resources>
+                    <resource>
+                        <directory>src/main/resources</directory>
+                        <targetPath>${project.build.directory}/ImageBuild</targetPath>
+                        <filtering>true</filtering>
+                    </resource>
+                </resources>
+
+                <pluginManagement>
+                    <plugins>
+
+                        <plugin>
+                            <groupId>org.codehaus.mojo</groupId>
+                            <artifactId>exec-maven-plugin</artifactId>
+                            <executions>
+                                <execution>
+                                    <id>buildLatest</id>
+                                    <phase>package</phase>
+                                    <goals>
+                                        <goal>exec</goal>
+                                    </goals>
+                                    <configuration>
+                                        <skip>${docker.latest.build.skip}</skip>
+                                        <executable>docker</executable>
+                                        <arguments>
+                                            <argument>compose</argument>
+                                            <argument>-f</argument>
+                                            <argument>${project.build.directory}/ImageBuild/docker-compose.yaml</argument>
+                                            <argument>build</argument>
+                                        </arguments>
+                                    </configuration>
+                                </execution>
+                                <execution>
+                                    <id>pushLatest</id>
+                                    <phase>deploy</phase>
+                                    <goals>
+                                        <goal>exec</goal>
+                                    </goals>
+                                    <configuration>
+                                        <skip>${docker.latest.push.skip}</skip>
+                                        <executable>docker</executable>
+                                        <arguments>
+                                            <argument>compose</argument>
+                                            <argument>-f</argument>
+                                            <argument>${project.build.directory}/ImageBuild/docker-compose.yaml</argument>
+                                            <argument>push</argument>
+                                        </arguments>
+                                    </configuration>
+                                </execution>
+                            </executions>
+                        </plugin>
+
+                    </plugins>
+                </pluginManagement>
+
+                <plugins>
+
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                    </plugin>
+
+                    <plugin>
+                        <artifactId>maven-resources-plugin</artifactId>
+                    </plugin>
+
+                    <plugin>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                    </plugin>
+
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>docker-tag</id>
+            <activation>
+                <property>
+                    <name>docker.skip</name>
+                    <value>!true</value>
+                </property>
+                <file>
+                    <exists>src/main/resources/docker-compose-tags.yaml</exists>
+                </file>
+            </activation>
+
+            <properties>
+                <docker.tag.build.skip>false</docker.tag.build.skip>
+                <docker.tag.push.skip>false</docker.tag.push.skip>
+            </properties>
+
+            <build>
+
+                <pluginManagement>
+                    <plugins>
+
+                        <plugin>
+                            <groupId>org.codehaus.mojo</groupId>
+                            <artifactId>exec-maven-plugin</artifactId>
+                            <executions>
+                                <execution>
+                                    <id>buildTags</id>
+                                    <phase>package</phase>
+                                    <goals>
+                                        <goal>exec</goal>
+                                    </goals>
+                                    <configuration>
+                                        <skip>${docker.tag.build.skip}</skip>
+                                        <executable>docker</executable>
+                                        <arguments>
+                                            <argument>compose</argument>
+                                            <argument>-f</argument>
+                                            <argument>${project.build.directory}/ImageBuild/docker-compose-tags.yaml</argument>
+                                            <argument>build</argument>
+                                        </arguments>
+                                    </configuration>
+                                </execution>
+                                <execution>
+                                    <id>pushTags</id>
+                                    <phase>deploy</phase>
+                                    <goals>
+                                        <goal>exec</goal>
+                                    </goals>
+                                    <configuration>
+                                        <skip>${docker.tag.push.skip}</skip>
+                                        <executable>docker</executable>
+                                        <arguments>
+                                            <argument>compose</argument>
+                                            <argument>-f</argument>
+                                            <argument>${project.build.directory}/ImageBuild/docker-compose-tags.yaml</argument>
+                                            <argument>push</argument>
+                                        </arguments>
+                                    </configuration>
+                                </execution>
+                            </executions>
+                        </plugin>
+
+                    </plugins>
+                </pluginManagement>
+
+                <plugins>
+
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                    </plugin>
+
+                    <plugin>
+                        <artifactId>maven-resources-plugin</artifactId>
+                    </plugin>
+
+                    <plugin>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                    </plugin>
+
                 </plugins>
             </build>
         </profile>
